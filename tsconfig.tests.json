@@ -1,0 +1,21 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"outDir": ".test-build",
+		"module": "ESNext",
+		"target": "ES2020",
+		"moduleResolution": "bundler",
+		"noEmit": false,
+		"declaration": false,
+		"inlineSourceMap": false,
+		"inlineSources": false
+	},
+	"include": [
+		"src/services/folder-id-resolver.ts",
+		"src/services/path-mapper.ts",
+		"src/services/scan-endpoint.ts",
+		"src/settings.ts",
+		"src/types.ts",
+		"tests/**/*.ts"
+	]
+}

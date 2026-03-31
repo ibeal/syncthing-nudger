@@ -1,99 +1,195 @@
-import {App, Editor, MarkdownView, Modal, Notice, Plugin} from 'obsidian';
-import {DEFAULT_SETTINGS, MyPluginSettings, SampleSettingTab} from "./settings";
+import { FileSystemAdapter, Plugin } from 'obsidian';
+import { registerCommands } from './commands';
+import { DEFAULT_SETTINGS } from './settings';
+import { testSyncthingCli } from './services/cli-tester';
+import { FolderIdResolver } from './services/folder-id-resolver';
+import { isMobileRuntime } from './services/mobile-guard';
+import { PathMapper } from './services/path-mapper';
+import { SyncthingClient } from './services/syncthing-client';
+import { TriggerManager } from './services/trigger-manager';
+import { FolderResolution, SyncthingNudgerSettings } from './types';
+import { NoticeManager } from './ui/notices';
+import { SyncthingNudgerSettingTab } from './ui/settings-tab';
 
-// Remember to rename these classes and interfaces!
+const FOLDER_UNAVAILABLE_NOTICE_KEY = 'folder-unavailable';
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class SyncthingNudgerPlugin extends Plugin {
+  settings: SyncthingNudgerSettings;
+  readonly notices = new NoticeManager();
+  readonly pathMapper = new PathMapper();
 
-	async onload() {
-		await this.loadSettings();
+  private triggerManager: TriggerManager | null = null;
+  private detectedFolder: FolderResolution = {
+    ok: false,
+    message: 'Folder detection not yet run.',
+  };
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
+  private readonly syncthingClient = new SyncthingClient(
+    () => ({
+      apiUrl: this.settings.apiUrl,
+      apiKey: this.settings.apiKey,
+    }),
+    (message) => this.debug(message),
+  );
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
+  private readonly folderResolver = new FolderIdResolver({
+    getFolders: async () => this.syncthingClient.getFolders(),
+    pathMapper: this.pathMapper,
+    debugLog: (message) => this.debug(message),
+  });
 
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				editor.replaceSelection('Sample editor command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
+  async onload(): Promise<void> {
+    await this.loadSettings();
+    this.addSettingTab(new SyncthingNudgerSettingTab(this.app, this));
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-				return false;
-			}
-		});
+    if (isMobileRuntime()) {
+      this.notices.info('Syncthing Trigger runs on desktop only. Mobile mode is no-op.');
+      this.debug('Mobile runtime detected. Triggers and commands are intentionally not registered.');
+      return;
+    }
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+    await this.refreshFolderDetection(false);
+    registerCommands(this);
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			new Notice("Click");
-		});
+    this.triggerManager = new TriggerManager(this);
+    this.triggerManager.register();
+    this.debug('Syncthing Trigger loaded.');
+  }
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+  onunload(): void {
+    this.triggerManager?.clearPending();
+  }
 
-	}
+  getDetectedFolder(): FolderResolution {
+    return this.detectedFolder;
+  }
 
-	onunload() {
-	}
+  async refreshFolderDetection(showNotice = true): Promise<FolderResolution> {
+    const vaultPath = this.getVaultBasePath();
+    this.detectedFolder = await this.folderResolver.resolveForVault(vaultPath);
 
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<MyPluginSettings>);
-	}
+    if (showNotice) {
+      if (this.detectedFolder.ok) {
+        this.notices.info(`Detected Syncthing folder: ${this.detectedFolder.folderId}`);
+      } else {
+        this.notices.error(`Folder detection failed: ${this.detectedFolder.message}`, FOLDER_UNAVAILABLE_NOTICE_KEY);
+      }
+    }
 
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
-}
+    return this.detectedFolder;
+  }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
+  async loadSettings(): Promise<void> {
+    const loaded = (await this.loadData()) as Partial<SyncthingNudgerSettings> | null;
+    this.settings = {
+      ...DEFAULT_SETTINGS,
+      ...loaded,
+      triggers: {
+        ...DEFAULT_SETTINGS.triggers,
+        ...loaded?.triggers,
+      },
+    };
+  }
 
-	onOpen() {
-		let {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
+  async saveSettings(): Promise<void> {
+    await this.saveData(this.settings);
+  }
 
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
-	}
+  async scanPath(path: string, source: string): Promise<void> {
+    if (!this.settings.enabled) {
+      this.debug(`Skipping ${source} scan because plugin is disabled.`);
+      return;
+    }
+
+    const folder = await this.getResolvedFolder();
+    if (!folder.ok || !folder.folderId) {
+      this.notices.error(`Scan skipped: ${folder.message}`, FOLDER_UNAVAILABLE_NOTICE_KEY);
+      this.debug(`Scan skipped (${source}): ${folder.message}`);
+      return;
+    }
+
+    const normalizedPath = this.pathMapper.normalizeVaultPath(path);
+    const result = await this.syncthingClient.triggerScan(folder.folderId, normalizedPath);
+    if (!result.ok) {
+      this.notices.error(`Syncthing scan failed: ${result.message}`, 'scan-failed');
+      this.debug(`Scan failed (${source}): ${result.message}`);
+      return;
+    }
+
+    this.debug(`Scan ok (${source}): ${normalizedPath || '<root>'}`);
+  }
+
+  async scanRename(newPath: string, oldPath: string): Promise<void> {
+    const hints = this.pathMapper.renameHints(oldPath, newPath);
+    for (const hint of hints) {
+      await this.scanPath(hint, 'rename');
+    }
+  }
+
+  async scanDelete(deletedPath: string): Promise<void> {
+    const hints = this.pathMapper.deleteHints(deletedPath);
+    for (const hint of hints) {
+      await this.scanPath(hint, 'delete');
+    }
+  }
+
+  async runApiTest(showNotice = false): Promise<boolean> {
+    const result = await this.syncthingClient.testApi();
+    const folderResult = result.ok
+      ? await this.refreshFolderDetection(false)
+      : { ok: false, message: 'Folder detection skipped because API test failed.' };
+
+    if (showNotice) {
+      if (result.ok) {
+        if (folderResult.ok) {
+          this.notices.info(`Syncthing API ok. Folder detected: ${folderResult.folderId}`);
+        } else {
+          this.notices.error(`Syncthing API ok, but folder detection failed: ${folderResult.message}`);
+        }
+      } else {
+        this.notices.error(`Syncthing API test failed: ${result.message}`, 'api-test-failed');
+      }
+    }
+
+    this.debug(`API test result: ${result.ok ? 'ok' : 'fail'} - ${result.message}`);
+    return result.ok;
+  }
+
+  async runCliTest(showNotice = false): Promise<boolean> {
+    const result = await testSyncthingCli(this.settings.cliPath);
+
+    if (showNotice) {
+      if (result.ok) {
+        this.notices.info(result.message);
+      } else {
+        this.notices.error(result.message, 'cli-test-failed');
+      }
+    }
+
+    this.debug(`CLI test result: ${result.ok ? 'ok' : 'fail'} - ${result.message}`);
+    return result.ok;
+  }
+
+  private async getResolvedFolder(): Promise<FolderResolution> {
+    if (this.detectedFolder.ok && this.detectedFolder.folderId) {
+      return this.detectedFolder;
+    }
+
+    return this.refreshFolderDetection(false);
+  }
+
+  private getVaultBasePath(): string | null {
+    const adapter = this.app.vault.adapter;
+    if (adapter instanceof FileSystemAdapter) {
+      return adapter.getBasePath();
+    }
+
+    return null;
+  }
+
+  private debug(message: string): void {
+    if (this.settings.debugLogging) {
+      console.debug(`[syncthing-nudger] ${message}`);
+    }
+  }
 }

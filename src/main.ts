@@ -1,7 +1,6 @@
 import { FileSystemAdapter, Plugin } from 'obsidian';
 import { registerCommands } from './commands';
 import { DEFAULT_SETTINGS } from './settings';
-import { testSyncthingCli } from './services/cli-tester';
 import { FolderIdResolver } from './services/folder-id-resolver';
 import { isMobileRuntime } from './services/mobile-guard';
 import { PathMapper } from './services/path-mapper';
@@ -152,21 +151,6 @@ export default class SyncthingNudgerPlugin extends Plugin {
     }
 
     this.debug(`API test result: ${result.ok ? 'ok' : 'fail'} - ${result.message}`);
-    return result.ok;
-  }
-
-  async runCliTest(showNotice = false): Promise<boolean> {
-    const result = await testSyncthingCli(this.settings.cliPath);
-
-    if (showNotice) {
-      if (result.ok) {
-        this.notices.info(result.message);
-      } else {
-        this.notices.error(result.message, 'cli-test-failed');
-      }
-    }
-
-    this.debug(`CLI test result: ${result.ok ? 'ok' : 'fail'} - ${result.message}`);
     return result.ok;
   }
 

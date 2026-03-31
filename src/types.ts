@@ -9,7 +9,6 @@ export interface SyncthingNudgerSettings {
   enabled: boolean;
   apiUrl: string;
   apiKey: string;
-  cliPath: string;
   debounceSeconds: number;
   debugLogging: boolean;
   triggers: TriggerSettings;

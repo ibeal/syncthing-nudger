@@ -1,90 +1,108 @@
-# Obsidian Sample Plugin
+# Syncthing Trigger (Obsidian plugin)
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+Syncthing Trigger is a lightweight Obsidian plugin that **nudges your local Syncthing instance** to scan targeted paths at natural editing boundaries.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+It focuses on one job:
+- trigger narrow Syncthing scans (file/folder hints), especially after debounced edits,
+- without handling conflict resolution, merges, or Syncthing daemon management.
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+## Why this plugin exists
 
-## First time developing plugins?
+Syncthing can feel slightly delayed when notes change rapidly. This plugin improves responsiveness by requesting targeted scans when it is most useful:
+- file open,
+- debounced file modify,
+- rename,
+- delete,
+- and manual command triggers.
 
-Quick starting guide for new plugin devs:
+## Features
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+- Desktop-first integration with local Syncthing REST API.
+- Automatic Syncthing folder ID detection from the current vault path via Syncthing config.
+- Debounced modify trigger (core behavior).
+- Rename and delete scan hints (old/new and parent contexts).
+- Optional open-file trigger.
+- Settings UI for API URL, API key, detected folder diagnostics, trigger toggles, debounce seconds, debug logging, and optional CLI path.
+- Diagnostic actions and commands:
+  - **Scan current file**
+  - **Scan current folder**
+  - **Test Syncthing API connection**
+  - **Test Syncthing CLI connection**
+- Graceful mobile behavior:
+  - plugin loads,
+  - shows unsupported notice,
+  - performs no operational triggers/commands.
 
-## Releasing new releases
+## Setup
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+1. Install and run Syncthing locally.
+2. Install this plugin in your vault.
+3. Open **Settings → Community plugins → Syncthing Trigger**.
+4. Configure:
+   - Syncthing API URL (default `http://127.0.0.1:8384`)
+   - Syncthing API key
+   - Debounce duration
+   - Trigger toggles
+5. Click **Test API** to verify connectivity and folder auto-detection.
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+## Folder auto-detection model
 
-## Adding your plugin to the community plugin list
+The plugin resolves folder ID using Syncthing config:
+1. Read the vault absolute path from the desktop file-system adapter.
+2. Query Syncthing `/rest/config` for configured folders.
+3. Match vault path against Syncthing folder paths (normalized path comparison).
+4. Use the matched folder ID for all scan requests.
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+If detection fails, settings and API diagnostics show actionable errors (unreachable/auth/no-match/ambiguous/path unavailable).
 
-## How to use
+## Development
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/obsidianmd/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
+```bash
+npm install
+npm run dev
 ```
 
-If you have multiple URLs, you can also do:
+Build for production:
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
+```bash
+npm run build
 ```
 
-## API Documentation
+Lint:
 
-See https://docs.obsidian.md
+```bash
+npm run lint
+```
+
+Test:
+
+```bash
+npm run test
+```
+
+## Manual install for testing
+
+Copy the following files to:
+
+`<Vault>/.obsidian/plugins/syncthing-nudger/`
+
+- `manifest.json`
+- `main.js`
+- `styles.css` (if used)
+
+Reload Obsidian and enable the plugin in **Settings → Community plugins**.
+
+## Notes
+
+- This plugin does **not** replace Syncthing.
+- This plugin does **not** implement merge/conflict resolution.
+- This plugin does **not** modify note contents.
+
+## Release
+
+Tag-based GitHub Actions release is configured. On a version tag (`0.1.0`, no `v` prefix), CI builds, lints, tests, and publishes release assets:
+
+- `manifest.json`
+- `main.js`
+- `styles.css`
+- `versions.json`

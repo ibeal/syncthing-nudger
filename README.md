@@ -22,12 +22,11 @@ Syncthing can feel slightly delayed when notes change rapidly. This plugin impro
 - Debounced modify trigger (core behavior).
 - Rename and delete scan hints (old/new and parent contexts).
 - Optional open-file trigger.
-- Settings UI for API URL, API key, detected folder diagnostics, trigger toggles, debounce seconds, debug logging, and optional CLI path.
+- Settings UI for API URL, API key, detected folder diagnostics, trigger toggles, debounce seconds, and debug logging.
 - Diagnostic actions and commands:
   - **Scan current file**
   - **Scan current folder**
   - **Test Syncthing API connection**
-  - **Test Syncthing CLI connection**
 - Graceful mobile behavior:
   - plugin loads,
   - shows unsupported notice,

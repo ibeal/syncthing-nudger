@@ -75,16 +75,6 @@ export class SyncthingNudgerSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName('Syncthing cli path')
-      .setDesc('Optional path shown in cli diagnostics.')
-      .addText((text) =>
-        text.setValue(this.plugin.settings.cliPath).onChange(async (value) => {
-          this.plugin.settings.cliPath = value.trim();
-          await this.plugin.saveSettings();
-        }),
-      );
-
-    new Setting(containerEl)
       .setName('Debounce duration (seconds)')
       .setDesc('Modify events are collapsed into one scan per file over this interval.')
       .addText((text) =>
@@ -128,14 +118,6 @@ export class SyncthingNudgerSettingTab extends PluginSettingTab {
         }),
       );
 
-    new Setting(containerEl)
-      .setName('Test cli')
-      .setDesc('Run a lightweight local cli diagnostic when available.')
-      .addButton((button) =>
-        button.setButtonText('Test cli').onClick(async () => {
-          await this.plugin.runCliTest(true);
-        }),
-      );
   }
 
   private addTriggerToggle(

@@ -42,7 +42,11 @@ export default class SyncthingNudgerPlugin extends Plugin {
     this.addSettingTab(new SyncthingNudgerSettingTab(this.app, this));
 
     if (isMobileRuntime()) {
-      this.notices.info('Syncthing Trigger runs on desktop only. Mobile mode is no-op.');
+      if (!this.settings.mobileStartupNoticeShown) {
+        this.notices.info('Syncthing Trigger runs on desktop only. Mobile mode is no-op.');
+        this.settings.mobileStartupNoticeShown = true;
+        await this.saveSettings();
+      }
       this.debug('Mobile runtime detected. Triggers and commands are intentionally not registered.');
       return;
     }

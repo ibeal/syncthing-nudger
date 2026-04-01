@@ -6,6 +6,7 @@ export const DEFAULT_SETTINGS: SyncthingNudgerSettings = {
   apiKey: '',
   debounceSeconds: 2,
   debugLogging: false,
+  mobileStartupNoticeShown: false,
   triggers: {
     openFile: true,
     modify: true,

@@ -29,7 +29,8 @@ Syncthing can feel slightly delayed when notes change rapidly. This plugin impro
   - **Test Syncthing API connection**
 - Graceful mobile behavior:
   - plugin loads,
-  - shows unsupported notice,
+  - shows an unsupported notice once (first mobile load),
+  - clearly marks desktop-only behavior in settings,
   - performs no operational triggers/commands.
 
 ## Setup

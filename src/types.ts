@@ -11,6 +11,7 @@ export interface SyncthingNudgerSettings {
   apiKey: string;
   debounceSeconds: number;
   debugLogging: boolean;
+  mobileStartupNoticeShown: boolean;
   triggers: TriggerSettings;
 }
 

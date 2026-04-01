@@ -1,6 +1,7 @@
 /* eslint-disable obsidianmd/ui/sentence-case */
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import SyncthingNudgerPlugin from '../main';
+import { isMobileRuntime } from '../services/mobile-guard';
 
 export class SyncthingNudgerSettingTab extends PluginSettingTab {
   constructor(app: App, private readonly plugin: SyncthingNudgerPlugin) {
@@ -11,6 +12,15 @@ export class SyncthingNudgerSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     const detected = this.plugin.getDetectedFolder();
+    const mobile = isMobileRuntime();
+
+    if (mobile) {
+      new Setting(containerEl)
+        .setName('Mobile support')
+        .setDesc(
+          'This plugin is desktop-only. On mobile it does not register triggers or commands. You can still configure settings here for desktop use.',
+        );
+    }
 
     new Setting(containerEl)
       .setName('Enable plugin')
@@ -68,8 +78,8 @@ export class SyncthingNudgerSettingTab extends PluginSettingTab {
       .setName('Refresh folder detection')
       .setDesc('Query Syncthing config again and rematch this vault path.')
       .addButton((button) =>
-        button.setButtonText('Re-detect folder').onClick(async () => {
-          await this.plugin.refreshFolderDetection(true);
+        button.setButtonText('Re-detect folder').setDisabled(mobile).onClick(async () => {
+          await this.plugin.refreshFolderDetection(!mobile);
           this.display();
         }),
       );
@@ -112,7 +122,7 @@ export class SyncthingNudgerSettingTab extends PluginSettingTab {
       .setName('Test api')
       .setDesc('Check connectivity and authentication for the syncthing rest api.')
       .addButton((button) =>
-        button.setButtonText('Test api').onClick(async () => {
+        button.setButtonText('Test api').setDisabled(mobile).onClick(async () => {
           await this.plugin.runApiTest(true);
           this.display();
         }),

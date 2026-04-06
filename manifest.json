@@ -1,10 +1,10 @@
 {
   "id": "syncthing-nudger",
-  "name": "Syncthing Trigger",
+  "name": "Syncthing Nudger",
   "version": "0.1.0",
   "minAppVersion": "1.5.0",
   "description": "Trigger targeted Syncthing scans at natural Obsidian editing boundaries.",
-  "author": "Syncthing Nudger Contributors",
-  "authorUrl": "https://github.com/example/syncthing-nudger",
+  "author": "Ian Beal",
+  "authorUrl": "https://github.com/ibeal/syncthing-nudger",
   "isDesktopOnly": false
 }

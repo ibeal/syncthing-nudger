@@ -1,6 +1,6 @@
-# Syncthing Trigger (Obsidian plugin)
+# Syncthing Nudger (Obsidian plugin)
 
-Syncthing Trigger is a lightweight Obsidian plugin that **nudges your local Syncthing instance** to scan targeted paths at natural editing boundaries.
+Syncthing Nudger is a lightweight Obsidian plugin that **nudges your local Syncthing instance** to scan targeted paths at natural editing boundaries.
 
 It focuses on one job:
 - trigger narrow Syncthing scans (file/folder hints), especially after debounced edits,
@@ -37,7 +37,7 @@ Syncthing can feel slightly delayed when notes change rapidly. This plugin impro
 
 1. Install and run Syncthing locally.
 2. Install this plugin in your vault.
-3. Open **Settings → Community plugins → Syncthing Trigger**.
+3. Open **Settings → Community plugins → Syncthing Nudger**.
 4. Configure:
    - Syncthing API URL (default `http://127.0.0.1:8384`)
    - Syncthing API key
